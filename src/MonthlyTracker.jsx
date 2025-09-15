@@ -1,156 +1,105 @@
-import React, { useState } from "react";
+// MonthlyTracker.jsx
+import { useState } from "react";
 
-function MonthlyTracker({ months, monthlyEntries, setMonthlyEntries }) {
-  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+const months = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+];
+
+function MonthlyTracker({ monthlyEntries, setMonthlyEntries }) {
+  const [selectedMonth, setSelectedMonth] = useState(months[0]);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [type, setType] = useState("income");
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [type, setType] = useState("Income");
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleAdd = () => {
     if (!description || !amount) return;
 
-    const newEntry = {
-      description: description.charAt(0).toUpperCase() + description.slice(1),
-      amount: parseFloat(amount),
-      type,
-    };
+    const monthData = monthlyEntries[selectedMonth] || { income: [], expense: [] };
+    const newEntry = { description, amount: Number(amount) };
 
-    const updatedMonthEntries = [...monthlyEntries];
-    const monthData = [...updatedMonthEntries[currentMonth]];
+    if (type === "Income") monthData.income.push(newEntry);
+    else monthData.expense.push(newEntry);
 
-    if (editingIndex !== null) {
-      monthData[editingIndex] = newEntry;
-      setEditingIndex(null);
-    } else {
-      monthData.push(newEntry);
-    }
-
-    updatedMonthEntries[currentMonth] = monthData;
-    setMonthlyEntries(updatedMonthEntries);
-
+    setMonthlyEntries({ ...monthlyEntries, [selectedMonth]: monthData });
     setDescription("");
     setAmount("");
   };
 
-  const deleteEntry = (index) => {
-    const updatedMonthEntries = [...monthlyEntries];
-    updatedMonthEntries[currentMonth] = updatedMonthEntries[currentMonth].filter((_, i) => i !== index);
-    setMonthlyEntries(updatedMonthEntries);
+  const handleDelete = (entryType, index) => {
+    const monthData = { ...monthlyEntries[selectedMonth] };
+    monthData[entryType].splice(index, 1);
+    setMonthlyEntries({ ...monthlyEntries, [selectedMonth]: monthData });
   };
 
-  const editEntry = (index) => {
-    const entry = monthlyEntries[currentMonth][index];
-    setDescription(entry.description);
-    setAmount(entry.amount);
-    setType(entry.type);
-    setEditingIndex(index);
-  };
-
-  const entries = monthlyEntries[currentMonth];
-  const income = entries.filter(e => e.type === "income").reduce((sum, e) => sum + e.amount, 0);
-  const expense = entries.filter(e => e.type === "expense").reduce((sum, e) => sum + e.amount, 0);
-  const savings = income - expense;
-
-  const goToPreviousMonth = () => setCurrentMonth((prev) => (prev === 0 ? 11 : prev - 1));
-  const goToNextMonth = () => setCurrentMonth((prev) => (prev === 11 ? 0 : prev + 1));
+  const monthData = monthlyEntries[selectedMonth] || { income: [], expense: [] };
+  const totalIncome = monthData.income.reduce((sum, e) => sum + e.amount, 0);
+  const totalExpense = monthData.expense.reduce((sum, e) => sum + e.amount, 0);
+  const savings = totalIncome - totalExpense;
 
   return (
-    <div
-      style={{
-        backgroundColor: "white",
-        padding: "20px",
-        borderRadius: "10px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        width: "90%",
-        maxWidth: "700px",
-        margin: "0 auto",
-      }}
-    >
-      <h1 style={{ color: "#007bff" }}>Finance Tracker</h1>
+    <div>
+      <h2 style={{ textAlign: "center" }}>Monthly Tracker</h2>
 
-      {/* Month Navigation */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "10px" }}>
-        <button onClick={goToPreviousMonth}>◀ Previous</button>
-        <strong style={{ fontSize: "18px" }}>{months[currentMonth]}</strong>
-        <button onClick={goToNextMonth}>Next ▶</button>
+      {/* Month selector */}
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <label>Select Month: </label>
+        <select value={selectedMonth} onChange={(e) => setSelectedMonth(e.target.value)}>
+          {months.map((m) => <option key={m} value={m}>{m}</option>)}
+        </select>
       </div>
 
-      <form onSubmit={handleSubmit} style={{ marginBottom: "20px" }}>
+      {/* Add entry */}
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
         <input
           type="text"
           placeholder="Description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
+          style={{ marginRight: "5px", padding: "5px" }}
         />
         <input
           type="number"
           placeholder="Amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
+          style={{ marginRight: "5px", padding: "5px", width: "100px" }}
         />
-        <select
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-          style={{ width: "100%", marginBottom: "10px", padding: "8px" }}
-        >
-          <option value="income">Income</option>
-          <option value="expense">Expense</option>
+        <select value={type} onChange={(e) => setType(e.target.value)} style={{ marginRight: "5px" }}>
+          <option value="Income">Income</option>
+          <option value="Expense">Expense</option>
         </select>
-        <button
-          type="submit"
-          style={{
-            width: "100%",
-            padding: "10px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          {editingIndex !== null ? "Save" : "Add"}
-        </button>
-      </form>
-
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <p style={{ fontWeight: "bold", color: "green" }}>Income: ${income}</p>
-        <p style={{ fontWeight: "bold", color: "red" }}>Expense: ${expense}</p>
+        <button onClick={handleAdd}>Add</button>
       </div>
-      <p style={{ fontWeight: "bold", color: "#007bff" }}>Savings: ${savings}</p>
 
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "20px" }}>
-        <div style={{ flex: 1 }}>
-          <h3 style={{ color: "green" }}>Income</h3>
-          {entries.filter(e => e.type === "income").map((entry, index) => (
-            <div key={index} style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>{entry.description}: ${entry.amount}</span>
-              <div>
-                <button onClick={() => editEntry(index)}>Edit</button>
-                <button onClick={() => deleteEntry(index)}>Delete</button>
-              </div>
+      {/* Income & Expense Table */}
+      <div style={{ display: "flex", justifyContent: "space-around" }}>
+        <div>
+          <h3>Income</h3>
+          {monthData.income.map((e, i) => (
+            <div key={i}>
+              {e.description}: ${e.amount}{" "}
+              <button onClick={() => handleDelete("income", i)}>Delete</button>
             </div>
           ))}
+          <h4>Total: ${totalIncome}</h4>
         </div>
-
-        <div style={{ flex: 1 }}>
-          <h3 style={{ color: "red" }}>Expense</h3>
-          {entries.filter(e => e.type === "expense").map((entry, index) => (
-            <div key={index} style={{ display: "flex", justifyContent: "space-between" }}>
-              <span>{entry.description}: ${entry.amount}</span>
-              <div>
-                <button onClick={() => editEntry(index)}>Edit</button>
-                <button onClick={() => deleteEntry(index)}>Delete</button>
-              </div>
+        <div>
+          <h3>Expense</h3>
+          {monthData.expense.map((e, i) => (
+            <div key={i}>
+              {e.description}: ${e.amount}{" "}
+              <button onClick={() => handleDelete("expense", i)}>Delete</button>
             </div>
           ))}
+          <h4>Total: ${totalExpense}</h4>
         </div>
       </div>
+
+      <h3 style={{ textAlign: "center" }}>Savings: ${savings}</h3>
     </div>
   );
 }
 
 export default MonthlyTracker;
+

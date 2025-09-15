@@ -1,119 +1,92 @@
 import { useState, useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Login from "./Login";
 import MonthlyTracker from "./MonthlyTracker";
 import YearlySummary from "./YearlySummary";
+import { auth, db } from "./firebase";
+import { saveMonthlyEntries, loadMonthlyEntries } from "./firestoreHelpers";
+import { doc, getDoc } from "firebase/firestore";
 
 function App() {
-  const months = [
-    "January","February","March","April","May","June",
-    "July","August","September","October","November","December",
-  ];
-
   const currentYear = new Date().getFullYear();
+  const [user, setUser] = useState(null);
+  const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [monthlyEntries, setMonthlyEntries] = useState({});
+  const [view, setView] = useState("monthly");
 
-  // Load year from localStorage or use current year
-  const [year, setYear] = useState(() => {
-    const savedYear = localStorage.getItem("selectedYear");
-    return savedYear ? Number(savedYear) : currentYear;
-  });
-
-  // Load monthlyEntries from localStorage or empty object
-  const [monthlyEntries, setMonthlyEntries] = useState(() => {
-    const saved = localStorage.getItem("monthlyEntries");
-    return saved ? JSON.parse(saved) : {};
-  });
-
-  // Save monthlyEntries to localStorage whenever it changes
+  // Listen for auth state changes
   useEffect(() => {
-    localStorage.setItem("monthlyEntries", JSON.stringify(monthlyEntries));
-  }, [monthlyEntries]);
+    const unsubscribe = auth.onAuthStateChanged((u) => setUser(u));
+    return () => unsubscribe();
+  }, []);
 
-  // Save selected year to localStorage whenever it changes
+  // Load username if missing
   useEffect(() => {
-    localStorage.setItem("selectedYear", year);
-  }, [year]);
-
-  // Initialize years: 10 past + current + 9 future
-  const [years, setYears] = useState(() => {
-    const start = currentYear - 10;
-    const end = currentYear + 9;
-    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-  });
-
-  // Handle year change
-  const handleYearChange = (selectedYear) => {
-    setYear(selectedYear);
-
-    // Automatically extend years if selecting first or last 5-year boundary
-    const firstYear = years[0];
-    const lastYear = years[years.length - 1];
-
-    if (selectedYear <= firstYear + 4) {
-      // add 5 more years to the past
-      const newYears = Array.from({ length: 5 }, (_, i) => firstYear - 5 + i);
-      setYears([...newYears, ...years]);
-    } else if (selectedYear >= lastYear - 4) {
-      // add 5 more years to the future
-      const newYears = Array.from({ length: 5 }, (_, i) => lastYear + 1 + i);
-      setYears([...years, ...newYears]);
+    if (user && !user.displayName) {
+      const fetchUsername = async () => {
+        const docSnap = await getDoc(doc(db, "users", user.uid));
+        if (docSnap.exists()) {
+          user.displayName = docSnap.data().username;
+          setUser({ ...user });
+        }
+      };
+      fetchUsername();
     }
-  };
+  }, [user]);
+
+  // Load monthly entries from Firestore
+  useEffect(() => {
+    if (user) {
+      loadMonthlyEntries(user).then((data) => {
+        if (data[selectedYear]) setMonthlyEntries(data[selectedYear]);
+      });
+    }
+  }, [user, selectedYear]);
+
+  // Save to localStorage
+  useEffect(() => {
+    localStorage.setItem(`monthlyEntries-${selectedYear}`, JSON.stringify(monthlyEntries));
+  }, [monthlyEntries, selectedYear]);
+
+  // Save to Firestore
+  useEffect(() => {
+    if (user) saveMonthlyEntries(user, selectedYear, monthlyEntries);
+  }, [monthlyEntries, user, selectedYear]);
+
+  if (!user) return <Login setUser={setUser} />;
 
   return (
-    <Router>
-      {/* Year Selector */}
-      <div style={{ textAlign: "center", marginTop: "20px" }}>
-        <label>
-          Select Year:{" "}
-          <select
-            value={year}
-            onChange={(e) => handleYearChange(Number(e.target.value))}
-            style={{ padding: "5px", width: "120px" }}
-          >
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        </label>
+    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
+      <h1 style={{ textAlign: "center" }}>Finance Tracker</h1>
+      <p style={{ textAlign: "center" }}>Welcome, {user.displayName ? user.displayName : user.email}!</p>
+
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <button onClick={() => setView("monthly")} style={{ marginRight: "10px", padding: "8px 16px" }}>Monthly Tracker</button>
+        <button onClick={() => setView("yearly")} style={{ padding: "8px 16px" }}>Yearly Summary</button>
       </div>
 
-      {/* Navigation */}
-      <nav style={{ textAlign: "center", margin: "20px" }}>
-        <Link to="/" style={{ marginRight: "10px" }}>Monthly</Link>
-        <Link to="/yearly">Yearly</Link>
-      </nav>
+      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+        <label>Select Year: </label>
+        <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))}>
+          {Array.from({ length: 21 }, (_, i) => currentYear - 10 + i).map((y) => (
+            <option key={y} value={y}>{y}</option>
+          ))}
+        </select>
+      </div>
 
-      {/* Routes */}
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <MonthlyTracker
-              months={months}
-              monthlyEntries={monthlyEntries[year] || Array(12).fill([])}
-              setMonthlyEntries={(entries) =>
-                setMonthlyEntries({ ...monthlyEntries, [year]: entries })
-              }
-            />
-          }
-        />
-        <Route
-          path="/yearly"
-          element={
-            <YearlySummary
-              months={months}
-              monthlyEntries={monthlyEntries[year] || Array(12).fill([])}
-            />
-          }
-        />
-      </Routes>
-    </Router>
+      {view === "monthly" ? (
+        <MonthlyTracker monthlyEntries={monthlyEntries} setMonthlyEntries={setMonthlyEntries} />
+      ) : (
+        <YearlySummary monthlyEntries={monthlyEntries} />
+      )}
+    </div>
   );
 }
 
 export default App;
+
+
+
+
 
 
 
