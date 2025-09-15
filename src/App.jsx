@@ -9,11 +9,14 @@ function App() {
     "July","August","September","October","November","December",
   ];
 
-  // Load monthlyEntries from localStorage if available
-  const [monthlyEntries, setMonthlyEntries] = useState(() => {
+  const [year, setYear] = useState(new Date().getFullYear()); // default to current year
+  const [monthlyEntries, setMonthlyEntries] = useState({}); // store data per year
+
+  // Load from localStorage
+  useEffect(() => {
     const saved = localStorage.getItem("monthlyEntries");
-    return saved ? JSON.parse(saved) : Array(12).fill([]);
-  });
+    if (saved) setMonthlyEntries(JSON.parse(saved));
+  }, []);
 
   // Save to localStorage whenever monthlyEntries changes
   useEffect(() => {
@@ -22,6 +25,18 @@ function App() {
 
   return (
     <Router>
+      <div style={{ textAlign: "center", marginTop: "20px" }}>
+        <label>
+          Select Year:{" "}
+          <input
+            type="number"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            style={{ padding: "5px", width: "80px" }}
+          />
+        </label>
+      </div>
+
       <nav style={{ textAlign: "center", margin: "20px" }}>
         <Link to="/" style={{ marginRight: "10px" }}>Monthly</Link>
         <Link to="/yearly">Yearly</Link>
@@ -33,8 +48,10 @@ function App() {
           element={
             <MonthlyTracker
               months={months}
-              monthlyEntries={monthlyEntries}
-              setMonthlyEntries={setMonthlyEntries}
+              monthlyEntries={monthlyEntries[year] || Array(12).fill([])}
+              setMonthlyEntries={(entries) =>
+                setMonthlyEntries({ ...monthlyEntries, [year]: entries })
+              }
             />
           }
         />
@@ -43,7 +60,7 @@ function App() {
           element={
             <YearlySummary
               months={months}
-              monthlyEntries={monthlyEntries}
+              monthlyEntries={monthlyEntries[year] || Array(12).fill([])}
             />
           }
         />
@@ -53,6 +70,7 @@ function App() {
 }
 
 export default App;
+
 
 
 
