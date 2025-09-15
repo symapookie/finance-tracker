@@ -9,39 +9,83 @@ function App() {
     "July","August","September","October","November","December",
   ];
 
-  const [year, setYear] = useState(new Date().getFullYear()); // default to current year
-  const [monthlyEntries, setMonthlyEntries] = useState({}); // store data per year
+  const currentYear = new Date().getFullYear();
 
-  // Load from localStorage
-  useEffect(() => {
+  // Load year from localStorage or use current year
+  const [year, setYear] = useState(() => {
+    const savedYear = localStorage.getItem("selectedYear");
+    return savedYear ? Number(savedYear) : currentYear;
+  });
+
+  // Load monthlyEntries from localStorage or empty object
+  const [monthlyEntries, setMonthlyEntries] = useState(() => {
     const saved = localStorage.getItem("monthlyEntries");
-    if (saved) setMonthlyEntries(JSON.parse(saved));
-  }, []);
+    return saved ? JSON.parse(saved) : {};
+  });
 
-  // Save to localStorage whenever monthlyEntries changes
+  // Save monthlyEntries to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem("monthlyEntries", JSON.stringify(monthlyEntries));
   }, [monthlyEntries]);
 
+  // Save selected year to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("selectedYear", year);
+  }, [year]);
+
+  // Initialize years: 10 past + current + 9 future
+  const [years, setYears] = useState(() => {
+    const start = currentYear - 10;
+    const end = currentYear + 9;
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  });
+
+  // Handle year change
+  const handleYearChange = (selectedYear) => {
+    setYear(selectedYear);
+
+    // Automatically extend years if selecting first or last 5-year boundary
+    const firstYear = years[0];
+    const lastYear = years[years.length - 1];
+
+    if (selectedYear <= firstYear + 4) {
+      // add 5 more years to the past
+      const newYears = Array.from({ length: 5 }, (_, i) => firstYear - 5 + i);
+      setYears([...newYears, ...years]);
+    } else if (selectedYear >= lastYear - 4) {
+      // add 5 more years to the future
+      const newYears = Array.from({ length: 5 }, (_, i) => lastYear + 1 + i);
+      setYears([...years, ...newYears]);
+    }
+  };
+
   return (
     <Router>
+      {/* Year Selector */}
       <div style={{ textAlign: "center", marginTop: "20px" }}>
         <label>
           Select Year:{" "}
-          <input
-            type="number"
+          <select
             value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            style={{ padding: "5px", width: "80px" }}
-          />
+            onChange={(e) => handleYearChange(Number(e.target.value))}
+            style={{ padding: "5px", width: "120px" }}
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 
+      {/* Navigation */}
       <nav style={{ textAlign: "center", margin: "20px" }}>
         <Link to="/" style={{ marginRight: "10px" }}>Monthly</Link>
         <Link to="/yearly">Yearly</Link>
       </nav>
 
+      {/* Routes */}
       <Routes>
         <Route
           path="/"
@@ -70,6 +114,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
