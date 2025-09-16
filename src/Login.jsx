@@ -1,13 +1,28 @@
+// src/Login.jsx
 import { useState } from "react";
 import { auth, db } from "./firebase";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 
-function Login({ setUser }) {
+export default function Login({ setUser }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [isRegister, setIsRegister] = useState(false);
+
+  const initYear = async (user) => {
+    const yearRef = doc(db, "users", user.uid, "financeData", new Date().getFullYear().toString());
+    const months = [
+      "January","February","March","April","May","June",
+      "July","August","September","October","November","December"
+    ];
+    const yearDoc = await getDoc(yearRef);
+    if (!yearDoc.exists()) {
+      const emptyYear = {};
+      months.forEach(m => emptyYear[m] = { income: [], expense: [] });
+      await setDoc(yearRef, emptyYear);
+    }
+  };
 
   const handleRegister = async () => {
     if (!email || !password || !username) return alert("Fill all fields");
@@ -15,17 +30,7 @@ function Login({ setUser }) {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: username });
-
-      // Initialize empty financeData for this user
-      const yearRef = doc(db, "users", user.uid, "financeData", new Date().getFullYear().toString());
-      const months = [
-        "January","February","March","April","May","June",
-        "July","August","September","October","November","December"
-      ];
-      const emptyYear = {};
-      months.forEach(m => emptyYear[m] = { income: [], expense: [] });
-      await setDoc(yearRef, emptyYear);
-
+      await initYear(user);
       setUser(user);
     } catch (err) {
       alert(err.message);
@@ -37,21 +42,7 @@ function Login({ setUser }) {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-
-      // Ensure user exists in Firestore
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      if (!userDoc.exists()) {
-        // Create initial data if missing
-        const yearRef = doc(db, "users", user.uid, "financeData", new Date().getFullYear().toString());
-        const months = [
-          "January","February","March","April","May","June",
-          "July","August","September","October","November","December"
-        ];
-        const emptyYear = {};
-        months.forEach(m => emptyYear[m] = { income: [], expense: [] });
-        await setDoc(yearRef, emptyYear);
-      }
-
+      await initYear(user); // Ensure year exists
       setUser(user);
     } catch (err) {
       alert(err.message);
@@ -59,12 +50,12 @@ function Login({ setUser }) {
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "50px auto", padding: "20px", borderRadius: "10px", background: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
+    <div style={{ maxWidth: 400, margin: "50px auto", padding: 20, borderRadius: 10, background: "#fff", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
       <h2 style={{ textAlign: "center" }}>{isRegister ? "Register" : "Login"}</h2>
-      {isRegister && <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} style={{ width: "100%", marginBottom: "10px" }} />}
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ width: "100%", marginBottom: "10px" }} />
-      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: "100%", marginBottom: "10px" }} />
-      <button onClick={isRegister ? handleRegister : handleLogin} style={{ width: "100%", padding: "8px", marginBottom: "10px" }}>
+      {isRegister && <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} style={{ width: "100%", marginBottom: 10 }} />}
+      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} style={{ width: "100%", marginBottom: 10 }} />
+      <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} style={{ width: "100%", marginBottom: 10 }} />
+      <button onClick={isRegister ? handleRegister : handleLogin} style={{ width: "100%", padding: 8, marginBottom: 10 }}>
         {isRegister ? "Register" : "Login"}
       </button>
       <div style={{ textAlign: "center" }}>
@@ -76,7 +67,23 @@ function Login({ setUser }) {
   );
 }
 
-export default Login;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
