@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useState, useEffect } from "react";
 import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
@@ -7,7 +6,9 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import Login from "./Login";
 import MonthlyTracker from "./MonthlyTracker";
 import YearlySummary from "./YearlySummary";
-import FlowChart from "./FlowChart"; // NEW PAGE
+import MoneyPlan from "./MoneyPlan";
+import Reports from "./Reports";
+import FlowChart from "./FlowChart"; // <-- import your flow chart page
 
 function App() {
   const [user, setUser] = useState(null);
@@ -24,7 +25,6 @@ function App() {
   return (
     <Router>
       <div style={{ padding: "20px", maxWidth: "900px", margin: "0 auto" }}>
-        {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
           <h2>Finance Tracker</h2>
           <div>
@@ -34,17 +34,21 @@ function App() {
         </div>
 
         {/* Navigation */}
-        <nav style={{ display: "flex", gap: "20px", marginBottom: "20px" }}>
+        <nav style={{ display: "flex", gap: "20px", marginBottom: "20px", flexWrap: "wrap" }}>
           <Link to="/">Monthly Tracker</Link>
           <Link to="/yearly">Yearly Summary</Link>
-          <Link to="/flow">Finance Flow</Link> {/* NEW LINK */}
+          <Link to="/moneyplan">Money Plan</Link>
+          <Link to="/flowchart">Flow Chart</Link> {/* <-- Flow Chart link */}
+          <Link to="/reports">Reports</Link>
         </nav>
 
         {/* Routes */}
         <Routes>
           <Route path="/" element={<MonthlyTracker user={user} />} />
           <Route path="/yearly" element={<YearlySummary user={user} />} />
-          <Route path="/flow" element={<FlowChart user={user} />} /> {/* NEW ROUTE */}
+          <Route path="/moneyplan" element={<MoneyPlan user={user} />} />
+          <Route path="/flowchart" element={<FlowChart user={user} />} /> {/* <-- Flow Chart route */}
+          <Route path="/reports" element={<Reports user={user} />} />
         </Routes>
       </div>
     </Router>
@@ -52,6 +56,8 @@ function App() {
 }
 
 export default App;
+
+
 
 
 
